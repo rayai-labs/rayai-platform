@@ -78,29 +78,30 @@ jobs:
           NEW_TIMESTAMP=$(basename "$NEW_MIGRATION" | cut -d'_' -f1)
           echo "New migration timestamp: $NEW_TIMESTAMP"
 
-          # Get all existing migrations from base branch
-          git checkout origin/${{ github.base_ref }} -- supabase/migrations/ 2>/dev/null || true
+          # Get all existing migrations from base branch (main)
+          # Check if migrations directory exists in base branch
+          if git ls-tree -r origin/${{ github.base_ref }} --name-only | grep -q '^supabase/migrations/'; then
+            # Find the latest existing migration timestamp from base branch
+            LATEST_EXISTING=$(git ls-tree -r origin/${{ github.base_ref }} --name-only | grep -E '^supabase/migrations/.*\.sql$' | xargs -n1 basename | cut -d'_' -f1 | sort -r | head -n 1 || echo "0")
+            echo "Latest existing migration timestamp in ${{ github.base_ref }}: $LATEST_EXISTING"
 
-          # Find the latest existing migration timestamp
-          LATEST_EXISTING=$(ls -1 supabase/migrations/*.sql 2>/dev/null | sort -r | head -n 1 | xargs basename | cut -d'_' -f1 || echo "0")
-          echo "Latest existing migration timestamp: $LATEST_EXISTING"
-
-          # Restore the working directory
-          git checkout HEAD -- supabase/migrations/
-
-          # Compare timestamps (lexicographic comparison works for YYYYMMDDHHMMSS format)
-          if [ "$NEW_TIMESTAMP" \> "$LATEST_EXISTING" ]; then
-            echo "✅ New migration timestamp ($NEW_TIMESTAMP) is later than the latest existing migration ($LATEST_EXISTING)"
-            exit 0
+            # Compare timestamps (lexicographic comparison works for YYYYMMDDHHMMSS format)
+            if [ "$NEW_TIMESTAMP" \> "$LATEST_EXISTING" ]; then
+              echo "✅ New migration timestamp ($NEW_TIMESTAMP) is later than the latest existing migration ($LATEST_EXISTING)"
+              exit 0
+            else
+              echo "❌ Error: New migration timestamp ($NEW_TIMESTAMP) is not later than existing migrations ($LATEST_EXISTING)"
+              echo ""
+              echo "Policy: New migrations must have a timestamp later than all existing migrations"
+              echo ""
+              echo "This ensures migrations are applied in the correct order."
+              echo ""
+              echo "Please regenerate your migration file with: supabase migration new <name>"
+              exit 1
+            fi
           else
-            echo "❌ Error: New migration timestamp ($NEW_TIMESTAMP) is not later than existing migrations ($LATEST_EXISTING)"
-            echo ""
-            echo "Policy: New migrations must have a timestamp later than all existing migrations"
-            echo ""
-            echo "This ensures migrations are applied in the correct order."
-            echo ""
-            echo "Please regenerate your migration file with: supabase migration new <name>"
-            exit 1
+            echo "✅ No existing migrations found in ${{ github.base_ref }} branch - this is the first migration"
+            exit 0
           fi
 
   test-migrations:
