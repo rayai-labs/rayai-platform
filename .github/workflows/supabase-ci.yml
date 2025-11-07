@@ -130,9 +130,6 @@ jobs:
       - name: Run database tests
         run: supabase test db
 
-      - name: Check migration status
-        run: supabase migration list
-
       - name: Stop Supabase
         if: always()
         run: supabase stop --no-backup
