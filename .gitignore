@@ -56,3 +56,9 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Supabase
+.branches/
+.temp/
+supabase/.branches/
+supabase/.temp/
