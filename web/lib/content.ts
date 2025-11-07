@@ -151,8 +151,8 @@ export const siteContent = {
         tagline: "Deploy your agents in minutes",
         bestFor: "Startups and teams that want zero DevOps overhead",
         pricing: ["$0 + compute/mo"],
-        cta: "Talk to us",
-        ctaLink: "https://calendly.com/pavitra-rayai/25-min",
+        cta: "Get Started",
+        ctaLink: process.env.NEXT_PUBLIC_APP_URL,
         highlighted: true,
       },
       {
