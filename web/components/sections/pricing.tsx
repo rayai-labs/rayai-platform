@@ -1,10 +1,14 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { siteContent } from "@/lib/content"
 import { Check, Plus } from "lucide-react"
+import { useFeatureFlag } from "@/hooks/use-feature-flag"
 
 export function Pricing() {
   const { headline, subheadline, tiers, features } = siteContent.pricing
+  const signupFlowEnabled = useFeatureFlag('signup-flow')
 
   return (
     <section id="pricing" className="relative py-24 bg-background overflow-hidden">
@@ -81,12 +85,22 @@ export function Pricing() {
 
                 {/* CTA */}
                 <div className="flex justify-center">
-                  <a href={tier.ctaLink} target="_blank" rel="noopener noreferrer">
+                  <a 
+                    href={
+                      tier.name === "Starter"
+                        ? signupFlowEnabled ? tier.ctaLink : "https://calendly.com/pavitra-rayai/25-min"
+                        : tier.ctaLink
+                    } 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
                     <Button
                       size="lg"
                       className="bg-gradient-to-r from-wisteria to-lavender-pink hover:opacity-90 px-12"
                     >
-                      {tier.cta}
+                      {tier.name === "Starter"
+                        ? signupFlowEnabled ? tier.cta : "Talk to us"
+                        : tier.cta}
                     </Button>
                   </a>
                 </div>
