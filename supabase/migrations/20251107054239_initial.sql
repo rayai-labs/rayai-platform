@@ -12,9 +12,7 @@ create table "public"."profiles" (
 
 alter table "public"."profiles" enable row level security;
 
-CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id);
-
-alter table "public"."profiles" add constraint "profiles_pkey" PRIMARY KEY using index "profiles_pkey";
+alter table "public"."profiles" add constraint "profiles_pkey" PRIMARY KEY (id);
 
 alter table "public"."profiles" add constraint "profiles_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE not valid;
 
@@ -63,8 +61,7 @@ BEGIN
     SET
         email = NEW.email,
         full_name = NEW.raw_user_meta_data->>'full_name',
-        avatar_url = NEW.raw_user_meta_data->>'avatar_url',
-        updated_at = NOW()
+        avatar_url = NEW.raw_user_meta_data->>'avatar_url'
     WHERE id = NEW.id;
     RETURN NEW;
 END;

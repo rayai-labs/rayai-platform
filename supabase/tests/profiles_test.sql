@@ -131,6 +131,42 @@ SELECT ok(
     'on_profile_updated trigger should exist on profiles table'
 );
 
+-- Test that updated_at trigger actually updates the timestamp
+-- We test this by manually setting updated_at to a past time, then updating the record
+-- The trigger should reset it to NOW()
+DO $$
+DECLARE
+    old_timestamp timestamptz := '2020-01-01 00:00:00+00';
+    new_updated_at timestamptz;
+BEGIN
+    -- Manually set updated_at to a past time (bypassing the trigger by updating directly)
+    UPDATE public.profiles
+    SET updated_at = old_timestamp
+    WHERE id = '00000000-0000-0000-0000-000000000002';
+
+    -- Now update the profile normally - the trigger should fire and reset updated_at
+    UPDATE public.profiles
+    SET full_name = 'Updated Test User 2'
+    WHERE id = '00000000-0000-0000-0000-000000000002';
+
+    -- Get the new updated_at timestamp
+    SELECT updated_at INTO new_updated_at
+    FROM public.profiles
+    WHERE id = '00000000-0000-0000-0000-000000000002';
+
+    -- Verify that updated_at was updated by the trigger (should be much later than 2020)
+    IF new_updated_at > old_timestamp + interval '1 year' THEN
+        RAISE NOTICE 'updated_at trigger is working correctly - timestamp was updated from % to %', old_timestamp, new_updated_at;
+    ELSE
+        RAISE EXCEPTION 'updated_at trigger did not update the timestamp - old: %, new: %', old_timestamp, new_updated_at;
+    END IF;
+END $$;
+
+SELECT ok(
+    (SELECT updated_at >= created_at FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000002'),
+    'updated_at should be >= created_at after profile update'
+);
+
 -- Test 7: Test handle_user_metadata_sync trigger syncs profile data
 -- Setup test user 3
 DO $$
