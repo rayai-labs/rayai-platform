@@ -35,17 +35,37 @@ export default function DashboardPage() {
   ]
 
   const handleCreateKey = async () => {
+    if (!keyName.trim()) {
+      addToast('Please enter a key name', 'error')
+      return
+    }
+
     setIsGenerating(true)
     
-    // Simulate API key generation
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Generate a sample API key (in production this would be from backend)
-    const key = `sk-proj-${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
-    setApiKey(key)
-    setIsGenerating(false)
-    setShowCreateModal(false)
-    setShowKeyModal(true)
+    try {
+      const response = await fetch('/api/generate-key', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keyName: keyName.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate API key')
+      }
+
+      setApiKey(data.apiKey)
+      setIsGenerating(false)
+      setShowCreateModal(false)
+      setShowKeyModal(true)
+    } catch (error) {
+      console.error('Error generating API key:', error)
+      addToast(error instanceof Error ? error.message : 'Failed to generate API key', 'error')
+      setIsGenerating(false)
+    }
   }
 
   const copyToClipboard = async () => {
@@ -171,9 +191,9 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={handleCreateKey}
-                disabled={isGenerating}
+                disabled={isGenerating || !keyName.trim()}
                 className={`px-5 py-3 rounded-lg text-sm font-medium transition-all order-1 sm:order-2 ${
-                  isGenerating 
+                  isGenerating || !keyName.trim()
                     ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60' 
                     : 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
                 }`}
