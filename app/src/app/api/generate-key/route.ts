@@ -11,30 +11,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const timestamp = Date.now()
-    const randomId = crypto.randomUUID()
-    const randomBytes = crypto.getRandomValues(new Uint8Array(16))
+    const randomBytes = crypto.getRandomValues(new Uint8Array(32))
     const randomHex = Array.from(randomBytes)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('')
 
-    const baseString = `rayai_${keyName.trim()}_${timestamp}_${randomId}_${randomHex}`
-
-    const encoder = new TextEncoder()
-    const data = encoder.encode(baseString)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const apiKey = `ray_ai_sk_${randomHex}`
     
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    const hashHex = hashArray
+    // Generate hash for storage (when database is implemented)
+    const encoder = new TextEncoder()
+    const keyData = encoder.encode(apiKey)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', keyData)
+    const keyHash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('')
-
-    const apiKey = `ray_ai_sk_${hashHex.substring(0, 48)}`
+    
+    const displayPrefix = apiKey.substring(0, 22)
 
     return NextResponse.json({
       success: true,
       apiKey,
       keyName: keyName.trim(),
+      keyHash,
+      displayPrefix,
       createdAt: new Date().toISOString()
     })
 

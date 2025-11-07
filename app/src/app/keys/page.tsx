@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const [keyName, setKeyName] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
   const { addToast } = useToast()
 
   // Sample API keys data
@@ -71,7 +72,8 @@ export default function DashboardPage() {
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(apiKey)
-      addToast('API key copied to clipboard!', 'success')
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
       addToast('Failed to copy API key', 'error')
@@ -82,6 +84,7 @@ export default function DashboardPage() {
     setShowKeyModal(false)
     setKeyName('')
     setApiKey('')
+    setIsCopied(false)
   }
 
   return (
@@ -231,11 +234,22 @@ export default function DashboardPage() {
                   onClick={copyToClipboard}
                   className="px-3 py-2 sm:px-2.5 sm:py-1.5 border-none rounded text-xs font-medium cursor-pointer flex items-center justify-center gap-1 transition-all whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                  Copy
+                  {isCopied ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20,6 9,17 4,12"/>
+                      </svg>
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                      </svg>
+                      Copy
+                    </>
+                  )}
                 </button>
               </div>
             </div>
