@@ -63,7 +63,7 @@ function ToastContainer({ toasts, removeToast }: { toasts: Toast[], removeToast:
 function ToastItem({ toast, onRemove }: { toast: Toast, onRemove: (id: string) => void }) {
   const bgColor = {
     success: 'bg-wisteria',
-    error: 'bg-red-600', 
+    error: 'bg-destructive', 
     info: 'bg-primary'
   }
 

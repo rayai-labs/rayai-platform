@@ -87,10 +87,8 @@ export function Pricing() {
                 <div className="flex justify-center">
                   <a 
                     href={
-                      tier.name === "Starter" && signupFlowEnabled 
-                        ? tier.ctaLink 
-                        : tier.name === "Starter" 
-                        ? "https://calendly.com/pavitra-rayai/25-min"
+                      tier.name === "Starter"
+                        ? signupFlowEnabled ? tier.ctaLink : "https://calendly.com/pavitra-rayai/25-min"
                         : tier.ctaLink
                     } 
                     target="_blank" 
@@ -100,10 +98,8 @@ export function Pricing() {
                       size="lg"
                       className="bg-gradient-to-r from-wisteria to-lavender-pink hover:opacity-90 px-12"
                     >
-                      {tier.name === "Starter" && signupFlowEnabled 
-                        ? tier.cta 
-                        : tier.name === "Starter" 
-                        ? "Talk to us"
+                      {tier.name === "Starter"
+                        ? signupFlowEnabled ? tier.cta : "Talk to us"
                         : tier.cta}
                     </Button>
                   </a>

@@ -12,20 +12,15 @@ declare global {
 }
 
 export function useFeatureFlag(flagName: string): boolean {
-  const [isEnabled, setIsEnabled] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [isEnabled, setIsEnabled] = useState<boolean | undefined>(undefined)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.posthog) {
-      window.posthog.onFeatureFlags(() => {
-        setIsEnabled(window.posthog?.isFeatureEnabled(flagName) || false)
-        setIsLoaded(true)
+      return window.posthog.onFeatureFlags(() => {
+        setIsEnabled(window.posthog?.isFeatureEnabled(flagName) ?? false)
       })
-
-      setIsEnabled(window.posthog.isFeatureEnabled(flagName))
-      setIsLoaded(true)
     }
   }, [flagName])
 
-  return isEnabled
+  return isEnabled ?? false
 }
