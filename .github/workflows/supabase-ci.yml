@@ -1,0 +1,137 @@
+name: Supabase CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase-ci.yml'
+
+jobs:
+  check-migration-count:
+    name: Enforce One Migration Per PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed migration files
+        id: changed-files
+        run: |
+          # Get the base branch
+          git fetch origin ${{ github.base_ref }}
+
+          # Count migration files changed in this PR
+          CHANGED_MIGRATIONS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^supabase/migrations/.*\.sql$' | wc -l)
+
+          echo "count=$CHANGED_MIGRATIONS" >> $GITHUB_OUTPUT
+          echo "Changed migration files: $CHANGED_MIGRATIONS"
+
+          # List the changed files for debugging
+          echo "Files changed:"
+          git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^supabase/migrations/.*\.sql$' || echo "None"
+
+      - name: Enforce single migration rule
+        run: |
+          COUNT=${{ steps.changed-files.outputs.count }}
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "✅ No migration files changed in this PR"
+            exit 0
+          elif [ "$COUNT" -eq 1 ]; then
+            echo "✅ Exactly one migration file changed - this is allowed"
+          else
+            echo "❌ Error: Found $COUNT migration files in this PR"
+            echo ""
+            echo "Policy: Only one migration file is allowed per PR"
+            echo ""
+            echo "This ensures:"
+            echo "  - Easier code review"
+            echo "  - Clear migration history"
+            echo "  - Simpler rollback if needed"
+            echo ""
+            echo "Please split your changes into separate PRs, one migration per PR."
+            exit 1
+          fi
+
+      - name: Check migration timestamp is latest
+        if: steps.changed-files.outputs.count == '1'
+        run: |
+          # Get the new migration file
+          git fetch origin ${{ github.base_ref }}
+          NEW_MIGRATION=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^supabase/migrations/.*\.sql$')
+
+          echo "New migration file: $NEW_MIGRATION"
+
+          # Extract timestamp from new migration (format: YYYYMMDDHHMMSS_name.sql)
+          NEW_TIMESTAMP=$(basename "$NEW_MIGRATION" | cut -d'_' -f1)
+          echo "New migration timestamp: $NEW_TIMESTAMP"
+
+          # Get all existing migrations from base branch
+          git checkout origin/${{ github.base_ref }} -- supabase/migrations/ 2>/dev/null || true
+
+          # Find the latest existing migration timestamp
+          LATEST_EXISTING=$(ls -1 supabase/migrations/*.sql 2>/dev/null | sort -r | head -n 1 | xargs basename | cut -d'_' -f1 || echo "0")
+          echo "Latest existing migration timestamp: $LATEST_EXISTING"
+
+          # Restore the working directory
+          git checkout HEAD -- supabase/migrations/
+
+          # Compare timestamps (lexicographic comparison works for YYYYMMDDHHMMSS format)
+          if [ "$NEW_TIMESTAMP" \> "$LATEST_EXISTING" ]; then
+            echo "✅ New migration timestamp ($NEW_TIMESTAMP) is later than the latest existing migration ($LATEST_EXISTING)"
+            exit 0
+          else
+            echo "❌ Error: New migration timestamp ($NEW_TIMESTAMP) is not later than existing migrations ($LATEST_EXISTING)"
+            echo ""
+            echo "Policy: New migrations must have a timestamp later than all existing migrations"
+            echo ""
+            echo "This ensures migrations are applied in the correct order."
+            echo ""
+            echo "Please regenerate your migration file with: supabase migration new <name>"
+            exit 1
+          fi
+
+  test-migrations:
+    name: Test Migrations and Run Tests
+    runs-on: ubuntu-latest
+    needs: check-migration-count
+    if: always() && (needs.check-migration-count.result == 'success' || needs.check-migration-count.result == 'skipped')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase local instance
+        run: supabase start
+
+      - name: Verify migrations applied successfully
+        run: |
+          # Check that migrations ran without errors
+          supabase db reset --debug
+
+      - name: Run database tests
+        run: supabase test db
+
+      - name: Check migration status
+        run: supabase migration list
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup
