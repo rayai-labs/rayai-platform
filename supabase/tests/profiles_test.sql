@@ -6,25 +6,25 @@ CREATE EXTENSION IF NOT EXISTS pgtap;
 -- No plan needed - tests will be counted automatically
 SELECT no_plan();
 
--- Test 1: Check that profiles table exists
-SELECT has_table('public', 'profiles', 'profiles table should exist');
+-- Test 1: Check that profile table exists
+SELECT has_table('public', 'profile', 'profile table should exist');
 
 -- Test 2: Check that RLS is enabled
 SELECT ok(
-    (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.profiles'::regclass),
-    'RLS should be enabled on profiles table'
+    (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.profile'::regclass),
+    'RLS should be enabled on profile table'
 );
 
 -- Test 3: Check that required columns exist
-SELECT has_column('public', 'profiles', 'id', 'profiles should have id column');
-SELECT has_column('public', 'profiles', 'email', 'profiles should have email column');
-SELECT has_column('public', 'profiles', 'full_name', 'profiles should have full_name column');
-SELECT has_column('public', 'profiles', 'avatar_url', 'profiles should have avatar_url column');
-SELECT has_column('public', 'profiles', 'provider', 'profiles should have provider column');
-SELECT has_column('public', 'profiles', 'provider_id', 'profiles should have provider_id column');
+SELECT has_column('public', 'profile', 'id', 'profile should have id column');
+SELECT has_column('public', 'profile', 'email', 'profile should have email column');
+SELECT has_column('public', 'profile', 'full_name', 'profile should have full_name column');
+SELECT has_column('public', 'profile', 'avatar_url', 'profile should have avatar_url column');
+SELECT has_column('public', 'profile', 'provider', 'profile should have provider column');
+SELECT has_column('public', 'profile', 'provider_id', 'profile should have provider_id column');
 
 -- Test 4: Check that email is not null
-SELECT col_not_null('public', 'profiles', 'email', 'email column should be NOT NULL');
+SELECT col_not_null('public', 'profile', 'email', 'email column should be NOT NULL');
 
 -- Test 5: Setup test data for trigger tests
 DO $$
@@ -69,19 +69,19 @@ END $$;
 
 -- Test that profile was created by trigger
 SELECT ok(
-    EXISTS(SELECT 1 FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000001'),
+    EXISTS(SELECT 1 FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000001'),
     'Profile should be created when auth.users entry is created'
 );
 
 -- Test that profile data matches
 SELECT is(
-    (SELECT email FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000001'),
+    (SELECT email FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000001'),
     'test@example.com',
     'Profile email should match auth user email'
 );
 
 SELECT is(
-    (SELECT full_name FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000001'),
+    (SELECT full_name FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000001'),
     'Test User',
     'Profile full_name should be extracted from raw_user_meta_data'
 );
@@ -126,9 +126,9 @@ SELECT ok(
     EXISTS(
         SELECT 1 FROM pg_trigger
         WHERE tgname = 'on_profile_updated'
-        AND tgrelid = 'public.profiles'::regclass
+        AND tgrelid = 'public.profile'::regclass
     ),
-    'on_profile_updated trigger should exist on profiles table'
+    'on_profile_updated trigger should exist on profile table'
 );
 
 -- Test that updated_at trigger actually updates the timestamp
@@ -140,18 +140,18 @@ DECLARE
     new_updated_at timestamptz;
 BEGIN
     -- Manually set updated_at to a past time (bypassing the trigger by updating directly)
-    UPDATE public.profiles
+    UPDATE public.profile
     SET updated_at = old_timestamp
     WHERE id = '00000000-0000-0000-0000-000000000002';
 
     -- Now update the profile normally - the trigger should fire and reset updated_at
-    UPDATE public.profiles
+    UPDATE public.profile
     SET full_name = 'Updated Test User 2'
     WHERE id = '00000000-0000-0000-0000-000000000002';
 
     -- Get the new updated_at timestamp
     SELECT updated_at INTO new_updated_at
-    FROM public.profiles
+    FROM public.profile
     WHERE id = '00000000-0000-0000-0000-000000000002';
 
     -- Verify that updated_at was updated by the trigger (should be much later than 2020)
@@ -163,7 +163,7 @@ BEGIN
 END $$;
 
 SELECT ok(
-    (SELECT updated_at >= created_at FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000002'),
+    (SELECT updated_at >= created_at FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000002'),
     'updated_at should be >= created_at after profile update'
 );
 
@@ -215,13 +215,13 @@ END $$;
 
 -- Check that profile was synced
 SELECT is(
-    (SELECT full_name FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000003'),
+    (SELECT full_name FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000003'),
     'Updated Name',
     'Profile full_name should sync when auth user metadata changes'
 );
 
 SELECT is(
-    (SELECT avatar_url FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000003'),
+    (SELECT avatar_url FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000003'),
     'https://example.com/new.jpg',
     'Profile avatar_url should sync when auth user metadata changes'
 );
