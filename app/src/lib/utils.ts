@@ -25,3 +25,27 @@ export async function withRetry<T>(
   
   throw new Error('All retry attempts exhausted')
 }
+
+export async function determineUserRoute(supabase: any, userId: string): Promise<string> {
+  try {
+    const { data: profile, error: profileError } = await withRetry(async () => {
+      return await supabase
+        .from('profile')
+        .select('onboarding_completed')
+        .eq('id', userId)
+        .single()
+    })
+
+    if (profile?.onboarding_completed) {
+      console.log('User state: Returning user, routing to dashboard')
+      return '/keys'
+    } else {
+      const reason = profileError || !profile ? 'New user' : 'Incomplete onboarding';
+      console.log(`User state: ${reason}, routing to onboarding`);
+      return '/onboarding'
+    }
+  } catch (err) {
+    console.error('Error checking user state after retries:', err)
+    return '/onboarding'
+  }
+}

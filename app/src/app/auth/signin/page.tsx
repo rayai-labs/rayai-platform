@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Header } from "@/components/header"
-import { withRetry } from '@/lib/utils'
+import { determineUserRoute } from '@/lib/utils'
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -15,26 +15,8 @@ export default function SignInPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        try {
-          const { data: profile, error: profileError } = await withRetry(async () => {
-            return await supabase
-              .from('profile')
-              .select('onboarding_completed')
-              .eq('id', session.user.id)
-              .single()
-          })
-
-          if (profileError || !profile) {
-            router.push('/onboarding')
-          } else if (profile.onboarding_completed) {
-            router.push('/keys')
-          } else {
-            router.push('/onboarding')
-          }
-        } catch (err) {
-          console.error('Error checking profile after retries:', err)
-          router.push('/onboarding')
-        }
+        const route = await determineUserRoute(supabase, session.user.id)
+        router.push(route)
       }
     }
     checkUser()
@@ -59,8 +41,9 @@ export default function SignInPage() {
       console.error('Sign in error:', err)
       // TODO: Replace with proper toast notification  
       alert('Error signing in. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   return (
