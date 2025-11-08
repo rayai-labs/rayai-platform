@@ -5,10 +5,10 @@ import { determineUserRoute } from '@/lib/utils'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  let next = searchParams.get('next') ?? '/onboarding'
+  let next = searchParams.get('next') ?? '/keys'
   
   if (!next.startsWith('/') || next.startsWith('//')) {
-    next = '/onboarding'
+    next = '/keys'
   }
 
   if (code) {
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (user) {
-        next = await determineUserRoute(supabase, user.id)
+        next = await determineUserRoute()
       }
 
       const forwardedHost = request.headers.get('x-forwarded-host')
