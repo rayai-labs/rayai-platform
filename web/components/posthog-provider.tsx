@@ -15,6 +15,7 @@ if (typeof window !== 'undefined') {
         capture_pageview: false,
         capture_pageleave: true,
       })
+      ;(window as any).posthog = posthog
     } catch (error) {
       console.warn("PostHog failed to initialize:", error)
     }
