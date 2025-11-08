@@ -1,5 +1,5 @@
 
-create table "public"."profiles" (
+create table "public"."profile" (
   "id" uuid not null,
   "email" text not null,
   "full_name" text,
@@ -10,13 +10,13 @@ create table "public"."profiles" (
   "updated_at" timestamp with time zone default now()
 );
 
-alter table "public"."profiles" enable row level security;
+alter table "public"."profile" enable row level security;
 
-alter table "public"."profiles" add constraint "profiles_pkey" PRIMARY KEY (id);
+alter table "public"."profile" add constraint "profile_pkey" PRIMARY KEY (id);
 
-alter table "public"."profiles" add constraint "profiles_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE not valid;
+alter table "public"."profile" add constraint "profile_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE not valid;
 
-alter table "public"."profiles" validate constraint "profiles_id_fkey";
+alter table "public"."profile" validate constraint "profile_id_fkey";
 
 set check_function_bodies = off;
 
@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
  SECURITY DEFINER
 AS $function$
 BEGIN
-    INSERT INTO public.profiles (id, email, full_name, avatar_url, provider, provider_id)
+    INSERT INTO public.profile (id, email, full_name, avatar_url, provider, provider_id)
     VALUES (
         NEW.id,
         NEW.email,
@@ -57,7 +57,7 @@ CREATE OR REPLACE FUNCTION public.handle_user_metadata_sync()
  SECURITY DEFINER
 AS $function$
 BEGIN
-    UPDATE public.profiles
+    UPDATE public.profile
     SET
         email = NEW.email,
         full_name = NEW.raw_user_meta_data->>'full_name',
@@ -69,31 +69,31 @@ $function$
 ;
 
 -- Grant permissions to authenticated users only
-grant select on table "public"."profiles" to "authenticated";
-grant insert on table "public"."profiles" to "authenticated";
-grant update on table "public"."profiles" to "authenticated";
-grant delete on table "public"."profiles" to "authenticated";
+grant select on table "public"."profile" to "authenticated";
+grant insert on table "public"."profile" to "authenticated";
+grant update on table "public"."profile" to "authenticated";
+grant delete on table "public"."profile" to "authenticated";
 
 -- Grant full permissions to service role
-grant all on table "public"."profiles" to "service_role";
+grant all on table "public"."profile" to "service_role";
 
 -- RLS Policies
 create policy "Users can view their own profile"
-on "public"."profiles"
+on "public"."profile"
 as permissive
 for select
 to authenticated
 using ((auth.uid() = id));
 
 create policy "Users can insert their own profile"
-on "public"."profiles"
+on "public"."profile"
 as permissive
 for insert
 to authenticated
 with check ((auth.uid() = id));
 
 create policy "Users can update their own profile"
-on "public"."profiles"
+on "public"."profile"
 as permissive
 for update
 to authenticated
@@ -101,7 +101,7 @@ using ((auth.uid() = id))
 with check ((auth.uid() = id));
 
 create policy "Users can delete their own profile"
-on "public"."profiles"
+on "public"."profile"
 as permissive
 for delete
 to authenticated
@@ -109,7 +109,7 @@ using ((auth.uid() = id));
 
 -- Triggers
 CREATE TRIGGER on_profile_updated
-  BEFORE UPDATE ON public.profiles
+  BEFORE UPDATE ON public.profile
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
 
