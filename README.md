@@ -1,2 +1,2 @@
 # RayAI Platform
-## Deploy self-improving agents at scale
+Infra for highly effective agents
