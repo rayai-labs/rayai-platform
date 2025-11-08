@@ -8,12 +8,16 @@ if (typeof window !== 'undefined') {
   const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
   
   if (apiKey) {
-    posthog.init(apiKey, {
-      api_host: host,
-      person_profiles: "identified_only",
-      capture_pageview: false,
-      capture_pageleave: true,
-    })
+    try {
+      posthog.init(apiKey, {
+        api_host: host,
+        person_profiles: "identified_only",
+        capture_pageview: false,
+        capture_pageleave: true,
+      })
+    } catch (error) {
+      console.warn("PostHog failed to initialize:", error)
+    }
   }
 }
 
