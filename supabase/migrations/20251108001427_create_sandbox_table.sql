@@ -7,24 +7,19 @@ create table "public"."sandboxes" (
   "user_id" uuid not null,
   "status" sandbox_status not null default 'stopped',
   "created_at" timestamp with time zone default now(),
-  "updated_at" timestamp with time zone default now()
+  "updated_at" timestamp with time zone default now(),
+  constraint "sandboxes_pkey" primary key (id),
+  constraint "sandboxes_user_id_fkey" foreign key (user_id) references public.profiles(id) on delete cascade
 );
 
 -- Enable RLS
 alter table "public"."sandboxes" enable row level security;
 
--- Add primary key constraint
-alter table "public"."sandboxes" add constraint "sandboxes_pkey" PRIMARY KEY (id);
-
--- Add foreign key constraint to profiles table
-alter table "public"."sandboxes" add constraint "sandboxes_user_id_fkey"
-  FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+-- Add index for user_id for performance on RLS policies
+create index on "public"."sandboxes" (user_id);
 
 -- Grant permissions to authenticated users
-grant select on table "public"."sandboxes" to "authenticated";
-grant insert on table "public"."sandboxes" to "authenticated";
-grant update on table "public"."sandboxes" to "authenticated";
-grant delete on table "public"."sandboxes" to "authenticated";
+grant select, insert, update, delete on table "public"."sandboxes" to "authenticated";
 
 -- Grant full permissions to service role
 grant all on table "public"."sandboxes" to "service_role";
