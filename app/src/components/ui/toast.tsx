@@ -61,15 +61,21 @@ function ToastContainer({ toasts, removeToast }: { toasts: Toast[], removeToast:
 }
 
 function ToastItem({ toast, onRemove }: { toast: Toast, onRemove: (id: string) => void }) {
-  const bgColor = {
-    success: 'bg-wisteria',
-    error: 'bg-destructive', 
-    info: 'bg-primary'
+  const borderColors = {
+    success: 'border-green-400',
+    error: 'border-red-400', 
+    info: 'border-blue-400'
+  }
+
+  const textColors = {
+    success: 'text-green-300',
+    error: 'text-red-300',
+    info: 'text-blue-300'
   }
 
   return (
     <div 
-      className={`${bgColor[toast.type]} text-black px-4 py-3 rounded-lg shadow-lg border border-border/20 animate-in slide-in-from-right duration-300 min-w-[250px] max-w-[350px]`}
+      className={`bg-black/80 backdrop-blur-sm ${textColors[toast.type]} px-4 py-3 rounded-lg shadow-lg border ${borderColors[toast.type]} animate-in slide-in-from-right duration-300 min-w-[250px] max-w-[350px]`}
       onClick={() => onRemove(toast.id)}
     >
       <div className="flex items-center justify-between cursor-pointer">
@@ -79,7 +85,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast, onRemove: (id: string) =
             e.stopPropagation()
             onRemove(toast.id)
           }}
-          className="text-black/70 hover:text-black text-xs ml-3"
+          className="text-gray-400 hover:text-gray-300 text-xs ml-3"
         >
           ✕
         </button>

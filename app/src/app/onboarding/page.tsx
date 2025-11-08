@@ -1,23 +1,48 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { useToast } from "@/components/ui/toast"
+import { createClient } from '@/lib/supabase/client'
+import { withRetry } from '@/lib/utils'
 
 export default function OnboardingPage() {
   const [formData, setFormData] = useState({
     email: '',
-    name: '',
+    fullName: '',
     company: '',
     jobTitle: '',
-    familiarity: '',
-    buildPlan: ''
+    rayFamiliarity: '',
+    projectDescription: ''
   })
   
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const { addToast } = useToast()
+  const supabase = createClient()
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error || !session) {
+        router.push('/auth/signin')
+        return
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        email: session.user.email || '',
+        fullName: session.user.user_metadata?.full_name || ''
+      }))
+      
+      setIsLoading(false)
+    }
+    
+    getUser()
+  }, [router, supabase.auth])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -31,19 +56,54 @@ export default function OnboardingPage() {
     setIsSubmitting(true)
 
     try {
-      // TODO: Send to API endpoint
-      console.log('Form data:', formData)
-      await new Promise(resolve => setTimeout(resolve, 1500)) // Simulate API call
+      const { data: { session } } = await supabase.auth.getSession()
       
-      addToast('Account created successfully!', 'success')
+      if (!session) {
+        router.push('/auth/signin')
+        return
+      }
+
+      const { error } = await withRetry(async () => {
+        return await supabase
+          .from('profile')
+          .update({
+            email: formData.email,
+            full_name: formData.fullName,
+            company: formData.company,
+            job_title: formData.jobTitle,
+            ray_familiarity: formData.rayFamiliarity,
+            project_description: formData.projectDescription,
+            onboarding_completed: true
+          })
+          .eq('id', session.user.id)
+      })
+
+      if (error) {
+        console.error('Error updating profile:', error)
+        addToast('Something went wrong. Please try again.', 'error')
+        return
+      }
       
-      // Redirect to keys page
       router.push('/keys')
     } catch (err) {
+      console.error('Submission error:', err)
       addToast('Something went wrong. Please try again.', 'error')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="max-w-2xl mx-auto p-4 sm:p-6 lg:p-8 mt-12">
+          <div className="text-center">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -84,8 +144,8 @@ export default function OnboardingPage() {
             </label>
             <input
               type="text"
-              name="name"
-              value={formData.name}
+              name="fullName"
+              value={formData.fullName}
               onChange={handleChange}
               placeholder="Your name"
               required
@@ -128,8 +188,8 @@ export default function OnboardingPage() {
               Familiarity with Ray *
             </label>
             <select
-              name="familiarity"
-              value={formData.familiarity}
+              name="rayFamiliarity"
+              value={formData.rayFamiliarity}
               onChange={handleChange}
               required
               className="w-full p-3 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
@@ -147,8 +207,8 @@ export default function OnboardingPage() {
               What do you plan to build? *
             </label>
             <textarea
-              name="buildPlan"
-              value={formData.buildPlan}
+              name="projectDescription"
+              value={formData.projectDescription}
               onChange={handleChange}
               placeholder="Tell us about your project..."
               rows={4}

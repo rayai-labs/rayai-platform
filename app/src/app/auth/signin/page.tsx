@@ -4,19 +4,37 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Header } from "@/components/header"
+import { withRetry } from '@/lib/utils'
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  // Check if user is already authenticated
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // User is already signed in, redirect to onboarding or dashboard
-        router.push('/onboarding') // We'll add logic later to check if they need onboarding
+        try {
+          const { data: profile, error: profileError } = await withRetry(async () => {
+            return await supabase
+              .from('profile')
+              .select('onboarding_completed')
+              .eq('id', session.user.id)
+              .single()
+          })
+
+          if (profileError || !profile) {
+            router.push('/onboarding')
+          } else if (profile.onboarding_completed) {
+            router.push('/keys')
+          } else {
+            router.push('/onboarding')
+          }
+        } catch (err) {
+          console.error('Error checking profile after retries:', err)
+          router.push('/onboarding')
+        }
       }
     }
     checkUser()
@@ -34,10 +52,12 @@ export default function SignInPage() {
       
       if (error) {
         console.error('Error signing in:', error)
+        // TODO: Replace with proper toast notification
         alert('Error signing in. Please try again.')
       }
     } catch (err) {
       console.error('Sign in error:', err)
+      // TODO: Replace with proper toast notification  
       alert('Error signing in. Please try again.')
     }
     setIsLoading(false)
