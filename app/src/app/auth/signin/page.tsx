@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Header } from "@/components/header"
 import { determineUserRoute } from '@/lib/utils'
+import Link from 'next/link'
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -53,11 +54,8 @@ export default function SignInPage() {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-foreground leading-tight">
-            Welcome to RayAI
+            Sign In
           </h1>
-          <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-            Sign in to get your API key and start building with RayAI
-          </p>
         </div>
         
         {/* Sign In Card */}
@@ -81,11 +79,11 @@ export default function SignInPage() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             )}
-            {isLoading ? 'Signing in...' : 'Continue with Google'}
+            {isLoading ? 'Signing in...' : 'Sign in with Google'}
           </button>
           
           <p className="text-xs text-muted-foreground text-center mt-4 leading-relaxed">
-            By continuing, you agree to our Terms of Service and Privacy Policy
+            By continuing, you agree to our <Link href="/terms" className="underline hover:text-foreground transition-colors">Terms of Service</Link> and <Link href="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
           </p>
         </div>
       </div>
