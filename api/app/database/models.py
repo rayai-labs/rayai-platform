@@ -1,22 +1,22 @@
 """SQLAlchemy database models matching Supabase schema."""
 
-import enum
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Enum, Text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, ENUM
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
 Base = declarative_base()
 
 
-class SandboxStatus(str, enum.Enum):
+class SandboxStatus(StrEnum):
     """Sandbox status enum matching Supabase enum type."""
 
-    ACTIVE = "active"
     STOPPED = "stopped"
+    ACTIVE = "active"
 
 
 class Profile(Base):
@@ -47,7 +47,12 @@ class Sandbox(Base):
         index=True,
     )
     status = Column(
-        Enum(SandboxStatus, name="sandbox_status"),
+        ENUM(
+            "stopped",
+            "active",
+            name="sandbox_status",
+            create_type=False,  # Don't create type, it already exists in DB
+        ),
         nullable=False,
         server_default="stopped",
     )

@@ -122,9 +122,10 @@ class SandboxService:
 
     @staticmethod
     def start_sandbox(sandbox_id: UUID, user_id: UUID, db: Session) -> Sandbox:
-        """Start a sandbox (update status to active).
+        """Start a sandbox and create the Ray CodeInterpreterExecutor actor.
 
-        Note: Ray session is auto-created on first execute_code call by ray-agents.
+        This explicitly creates the ray-agents session actor so that install_package
+        and upload_file operations can be called without requiring execute_code first.
 
         Args:
             sandbox_id: Sandbox UUID
@@ -133,8 +134,39 @@ class SandboxService:
 
         Returns:
             Updated sandbox object
+
+        Raises:
+            HTTPException: If actor creation fails
         """
         sandbox = SandboxService._get_sandbox(sandbox_id, user_id, db)
+        session_id = sandbox.get_session_id()
+
+        # Create the CodeInterpreterExecutor actor explicitly
+        # This uses the same naming convention as ray-agents:
+        # - Actor name: f"code-executor-{session_id}"
+        # - Namespace: "code-interpreter"
+        try:
+            from ray_agents.code_interpreter.executor import CodeInterpreterExecutor
+
+            actor_name = f"code-executor-{session_id}"
+
+            # Try to get existing actor first
+            try:
+                ray.get_actor(actor_name, namespace="code-interpreter")
+                # Actor already exists, that's fine
+            except ValueError:
+                # Actor doesn't exist, create it
+                CodeInterpreterExecutor.options(
+                    name=actor_name,
+                    namespace="code-interpreter",
+                    lifetime="detached",  # Survives driver process exits
+                ).remote(session_id=session_id)
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create sandbox session: {str(e)}",
+            )
 
         sandbox.status = SandboxStatus.ACTIVE
         db.commit()

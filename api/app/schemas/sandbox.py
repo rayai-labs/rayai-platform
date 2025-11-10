@@ -26,28 +26,33 @@ class ExecutionResult(BaseModel):
     """Result from code execution in sandbox."""
 
     status: Literal["success", "error"]
-    stdout: str
-    stderr: str
+    stdout: Optional[str] = ""
+    stderr: Optional[str] = ""
     exit_code: Optional[int] = None
     execution_id: Optional[str] = None
     error_type: Optional[str] = None
+    error: Optional[str] = None  # Error message when status is "error"
 
 
 class InstallResult(BaseModel):
     """Result from package installation."""
 
     status: Literal["success", "error"]
-    package: str
-    message: str
+    package: Optional[str] = None
+    message: Optional[str] = None
+    error: Optional[str] = None  # Error message when status is "error"
+    error_type: Optional[str] = None
 
 
 class UploadResult(BaseModel):
     """Result from file upload."""
 
     status: Literal["success", "error"]
-    path: str
-    message: str
+    path: Optional[str] = None
+    message: Optional[str] = None
     size_bytes: Optional[int] = None
+    error: Optional[str] = None  # Error message when status is "error"
+    error_type: Optional[str] = None
 
 
 class SessionStats(BaseModel):

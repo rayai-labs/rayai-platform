@@ -34,6 +34,8 @@ async def startup_event():
         print(f"Connected to Ray cluster at {settings.ray_address}")
     else:
         # Start local Ray instance (development)
+        # Note: When using 'uv run', workers inherit the same environment automatically.
+        # The docker package from pyproject.toml will be available to Ray workers.
         ray.init(ignore_reinit_error=True, num_cpus=4)
         print("Started local Ray instance")
 
