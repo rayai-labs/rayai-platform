@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/client'
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 
 export interface AuthValidationResult {
   isValid: boolean
   shouldSignOut: boolean
   error?: string
 }
+
+type AddToastFunction = (message: string, type: 'success' | 'error') => void
 
 /**
  * Validates the current user session and handles broken sessions gracefully
@@ -67,7 +70,11 @@ export async function validateSession(): Promise<AuthValidationResult> {
 /**
  * Handles authentication errors consistently across the app
  */
-export async function handleAuthError(error: any, router: any, addToast?: any) {
+export async function handleAuthError(
+  error: any, 
+  router: AppRouterInstance, 
+  addToast?: AddToastFunction
+) {
   const supabase = createClient()
   
   if (error?.code === 'user_not_found' || error?.shouldSignOut) {

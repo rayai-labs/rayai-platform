@@ -6,6 +6,7 @@ import { Copy, Check, Trash2 } from "lucide-react"
 import { Header } from "@/components/header"
 import { useToast } from "@/components/ui/toast"
 import { createClient } from "@/lib/supabase/client"
+import { validateSession } from "@/lib/auth-helpers"
 
 interface ApiKey {
   id: string
@@ -33,34 +34,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
+      const { isValid, shouldSignOut, error } = await validateSession()
+      
+      if (!isValid) {
+        if (shouldSignOut) {
           await supabase.auth.signOut()
-          router.push('/auth/signin')
-          return
+          addToast(error || 'Session expired. Please sign in again.', 'error')
         }
-        
-        if (!session) {
-          router.push('/auth/signin')
-          return
-        }
-
-        const { error: userError } = await supabase.auth.getUser()
-        if (userError?.code === 'user_not_found') {
-          await supabase.auth.signOut()
-          addToast('Session expired. Please sign in again.', 'error')
-          router.push('/auth/signin')
-          return
-        }
-        
-        setIsCheckingAuth(false)
-      } catch (error) {
-        console.error('Error checking auth:', error)
-        await supabase.auth.signOut()
         router.push('/auth/signin')
+        return
       }
+      
+      setIsCheckingAuth(false)
     }
 
     checkAuth()
