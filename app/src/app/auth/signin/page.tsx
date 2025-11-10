@@ -14,10 +14,27 @@ export default function SignInPage() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        const route = await determineUserRoute()
-        router.push(route)
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          await supabase.auth.signOut()
+          return
+        }
+        
+        if (session) {
+          const { error: userError } = await supabase.auth.getUser()
+          if (userError?.code === 'user_not_found') {
+            await supabase.auth.signOut()
+            return
+          }
+          
+          const route = await determineUserRoute()
+          router.push(route)
+        }
+      } catch (error) {
+        console.error('Signin page - error checking user:', error)
+        await supabase.auth.signOut()
       }
     }
     checkUser()
