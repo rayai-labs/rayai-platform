@@ -9,9 +9,6 @@ export interface AuthValidationResult {
 
 type AddToastFunction = (message: string, type: 'success' | 'error') => void
 
-/**
- * Validates the current user session and handles broken sessions gracefully
- */
 export async function validateSession(): Promise<AuthValidationResult> {
   const supabase = createClient()
   
@@ -67,9 +64,6 @@ export async function validateSession(): Promise<AuthValidationResult> {
   }
 }
 
-/**
- * Handles authentication errors consistently across the app
- */
 export async function handleAuthError(
   error: any, 
   router: AppRouterInstance, 
@@ -89,4 +83,80 @@ export async function handleAuthError(
   }
   
   return false
+}
+
+interface DevAuthResult {
+  success: boolean
+  error?: string
+}
+
+export async function devSignIn(): Promise<DevAuthResult> {
+  if (process.env.NODE_ENV !== 'development') {
+    return { success: false, error: 'Dev signin only available in development' }
+  }
+  
+  if (process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH !== 'true') {
+    return { success: false, error: 'Dev auth not enabled' }
+  }
+  
+  const supabase = createClient()
+  const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_AUTH_EMAIL
+  const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_AUTH_PASSWORD
+  
+  if (!DEV_EMAIL || !DEV_PASSWORD) {
+    return { 
+      success: false, 
+      error: 'Dev auth credentials not configured. Please set NEXT_PUBLIC_DEV_AUTH_EMAIL and NEXT_PUBLIC_DEV_AUTH_PASSWORD.' 
+    }
+  }
+  
+  try {
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: DEV_EMAIL,
+      password: DEV_PASSWORD,
+    })
+    
+    if (signInData.user && !signInError) {
+      return { success: true }
+    }
+    
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: DEV_EMAIL,
+      password: DEV_PASSWORD,
+      options: {
+        data: {
+          full_name: 'Dev Test User',
+          avatar_url: 'https://via.placeholder.com/150/6366f1/ffffff?text=DEV',
+          provider_id: 'dev-user-local-id'
+        }
+      }
+    })
+    
+    if (signUpError) {
+      return { success: false, error: signUpError.message }
+    }
+    
+    if (signUpData.user && !signUpData.session) {
+      return { 
+        success: false, 
+        error: 'Email confirmation required. Please check your Supabase settings to disable email confirmation for development.' 
+      }
+    }
+    
+    return { success: true }
+    
+  } catch (error) {
+    console.error('Dev signin error:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Dev signin failed' 
+    }
+  }
+}
+
+export function isDevAuthEnabled(): boolean {
+  const isDev = process.env.NODE_ENV === 'development'
+  const devAuthFlag = process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === 'true'
+  
+  return isDev && devAuthFlag
 }

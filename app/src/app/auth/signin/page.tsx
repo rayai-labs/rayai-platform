@@ -6,10 +6,13 @@ import { useEffect, useState } from 'react'
 import { Header } from "@/components/header"
 import { determineUserRoute } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
+import { devSignIn, isDevAuthEnabled } from '@/lib/auth-helpers'
 import Link from 'next/link'
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [isDevLoading, setIsDevLoading] = useState(false)
+  const [showDevAuth, setShowDevAuth] = useState(false)
   const router = useRouter()
   const supabase = createClient()
   const { addToast } = useToast()
@@ -39,6 +42,9 @@ export default function SignInPage() {
       }
     }
     checkUser()
+    
+    // Check if dev auth should be enabled (client-side only)
+    setShowDevAuth(isDevAuthEnabled())
   }, [router, supabase.auth])
 
   const handleGoogleSignIn = async () => {
@@ -60,6 +66,25 @@ export default function SignInPage() {
       addToast('Error signing in. Please try again.', 'error')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleDevSignIn = async () => {
+    setIsDevLoading(true)
+    try {
+      const result = await devSignIn()
+      
+      if (result.success) {
+        const route = await determineUserRoute()
+        router.push(route)
+      } else {
+        addToast(result.error || 'Dev signin failed', 'error')
+      }
+    } catch (error) {
+      console.error('Dev signin error:', error)
+      addToast('Dev signin failed. Please try again.', 'error')
+    } finally {
+      setIsDevLoading(false)
     }
   }
 
@@ -101,6 +126,28 @@ export default function SignInPage() {
           <p className="text-xs text-muted-foreground text-center mt-4 leading-relaxed">
             By continuing, you agree to our <Link href="/terms" className="underline hover:text-foreground transition-colors">Terms of Service</Link> and <Link href="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
           </p>
+
+          {/* Dev Auth Section */}
+          {showDevAuth && (
+            <div className="mt-4">
+              <button
+                onClick={handleDevSignIn}
+                disabled={isDevLoading}
+                className={`
+                  w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg border text-base font-medium transition-all duration-200
+                  ${isDevLoading 
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed border-border opacity-60' 
+                    : 'bg-background text-foreground hover:bg-muted border-border cursor-pointer hover:shadow-md'
+                  }
+                `}
+              >
+                {!isDevLoading && (
+                  <span className="text-lg">⚡</span>
+                )}
+                {isDevLoading ? 'Signing in...' : 'Dev Sign In'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
