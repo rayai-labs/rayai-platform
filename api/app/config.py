@@ -24,6 +24,10 @@ class Settings(BaseSettings):
 
     # Environment
     environment: str = "development"
+    
+    # Authentication
+    auth_token_expire_hours: int = 24
+    enable_api_key_logging: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

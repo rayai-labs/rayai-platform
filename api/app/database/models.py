@@ -65,3 +65,24 @@ class Sandbox(Base):
         Format: {user_id}-{sandbox_id}
         """
         return f"{self.user_id}-{self.id}"
+
+
+class ApiKey(Base):
+    """API key table for authentication."""
+    
+    __tablename__ = "api_key"
+    
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    user_id = Column(
+        PG_UUID(as_uuid=True), 
+        ForeignKey("profile.id", ondelete="CASCADE"), 
+        nullable=False,
+        index=True
+    )
+    name = Column(Text, nullable=False)
+    key_hash = Column(Text, nullable=False, unique=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_used_at = Column(DateTime(timezone=True))
+    
+    def __repr__(self):
+        return f"<ApiKey(id={self.id}, user_id={self.user_id}, name='{self.name}')>"

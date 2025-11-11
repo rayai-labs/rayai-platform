@@ -1,72 +1,68 @@
-"""Authentication middleware using Supabase JWT tokens."""
+"""Authentication middleware using API keys."""
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+from sqlalchemy.orm import Session
 
-from app.config import settings
+from app.database.connection import get_db
+from app.services.api_key_auth_service import ApiKeyAuthService
 
 security = HTTPBearer()
 
 
-async def get_stub_user_id() -> UUID:
-    """Return a stub user ID for local testing without authentication.
-
-    This bypasses all authentication checks and returns a hardcoded test user ID.
-    USE ONLY FOR LOCAL DEVELOPMENT/TESTING.
-
+async def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> UUID:
+    """Authenticate API key and return user ID.
+    
+    Args:
+        credentials: HTTP Bearer token credentials
+        db: Database session
+        
     Returns:
-        user_id: Hardcoded test user UUID
+        User ID if authentication successful
+        
+    Raises:
+        HTTPException: If authentication fails
     """
-    # TODO: Replace with actual user ID from your database if needed
-    return UUID("00000000-0000-0000-0000-000000000001")
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing API key"
+        )
+    
+    api_key = credentials.credentials
+    
+    try:
+        user_id = await ApiKeyAuthService.authenticate_api_key(api_key, db)
+        return user_id
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Authentication error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication service error"
+        )
 
 
-async def get_current_user_id() -> UUID:
-    """STUB: Return hardcoded test user ID for local testing.
-
-    TODO: Re-enable JWT verification for production.
-
-    Original implementation (commented out):
-    Verify Supabase JWT token and extract user_id from Authorization header.
+# Optional: Get current user profile
+async def get_current_user(
+    user_id: UUID = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """Get current user profile.
+    
+    Returns:
+        Profile object for the authenticated user
     """
-    # STUB: Return test user ID without authentication
-    return UUID("00000000-0000-0000-0000-000000000001")
-
-    # # Original JWT verification code (disabled for local testing):
-    # try:
-    #     token = credentials.credentials
-    #
-    #     # Decode and verify JWT token
-    #     payload = jwt.decode(
-    #         token,
-    #         settings.supabase_jwt_secret,
-    #         algorithms=["HS256"],
-    #         audience="authenticated",
-    #     )
-    #
-    #     # Extract user ID from 'sub' claim
-    #     user_id_str: Optional[str] = payload.get("sub")
-    #     if user_id_str is None:
-    #         raise HTTPException(
-    #             status_code=status.HTTP_401_UNAUTHORIZED,
-    #             detail="Invalid token: missing subject",
-    #         )
-    #
-    #     # Convert to UUID
-    #     user_id = UUID(user_id_str)
-    #     return user_id
-    #
-    # except JWTError as e:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail=f"Invalid token: {str(e)}",
-    #     )
-    # except ValueError as e:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail=f"Invalid user ID format: {str(e)}",
-    #     )
+    user = await ApiKeyAuthService.get_user_profile(user_id, db)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User profile not found"
+        )
+    return user
