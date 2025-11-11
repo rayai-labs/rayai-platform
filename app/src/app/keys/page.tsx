@@ -232,7 +232,7 @@ export default function DashboardPage() {
             </div>
           ) : apiKeys.length === 0 ? (
             <div className="px-4 lg:px-6 py-8 text-center text-muted-foreground">
-              Create your first key to get started.
+              Create a key to start using the API
             </div>
           ) : (
             apiKeys.map((key, index) => (
@@ -271,7 +271,7 @@ export default function DashboardPage() {
             </div>
           ) : apiKeys.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Create your first key to get started.
+              Create a key to start using the API
             </div>
           ) : (
             apiKeys.map((key) => (
@@ -427,13 +427,11 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4">
           <div className="bg-muted border border-border text-foreground p-6 sm:p-8 rounded-xl sm:rounded-2xl w-full max-w-lg shadow-2xl">
             <h2 className="text-xl sm:text-2xl mb-2 font-bold text-foreground">
-              Revoke secret key
+              Revoke API Key
             </h2>
             
             <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
-              This API key will immediately be disabled. API requests made using this key will be rejected, 
-              which could cause any systems still depending on it to break. Once revoked, you'll no longer 
-              be able to view or modify this API key.
+              This API key will be revoked immediately and can no longer be used to make requests to the platform.
             </p>
 
             {/* Key Display */}
