@@ -51,7 +51,7 @@ BEGIN
         '00000000-0000-0000-0000-000000000000',
         'authenticated',
         'authenticated',
-        'test@example.com',
+        'testuser1@testing.local',
         crypt('password123', gen_salt('bf')),
         NOW(),
         jsonb_build_object(
@@ -76,7 +76,7 @@ SELECT ok(
 -- Test that profile data matches
 SELECT is(
     (SELECT email FROM public.profile WHERE id = '11111111-1111-1111-1111-111111111111'),
-    'test@example.com',
+    'testuser1@testing.local',
     'Profile email should match auth user email'
 );
 
@@ -109,7 +109,7 @@ BEGIN
         '00000000-0000-0000-0000-000000000000',
         'authenticated',
         'authenticated',
-        'test2@example.com',
+        'testuser2@testing.local',
         crypt('password123', gen_salt('bf')),
         NOW(),
         jsonb_build_object('full_name', 'Test User 2'),
@@ -190,7 +190,7 @@ BEGIN
         '00000000-0000-0000-0000-000000000000',
         'authenticated',
         'authenticated',
-        'test3@example.com',
+        'testuser3@testing.local',
         crypt('password123', gen_salt('bf')),
         NOW(),
         jsonb_build_object(
