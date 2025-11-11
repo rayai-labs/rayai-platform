@@ -64,7 +64,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!data || data.length === 0) {
-      console.error('Database error: Insert succeeded but no data returned. Check RLS policies.')
       return NextResponse.json(
         { error: 'Failed to save API key' },
         { status: 500 }

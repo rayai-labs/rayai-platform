@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Header } from "@/components/header"
 import { determineUserRoute } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
 import Link from 'next/link'
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const { addToast } = useToast()
 
   useEffect(() => {
     const checkUser = async () => {
@@ -33,7 +35,6 @@ export default function SignInPage() {
           router.push(route)
         }
       } catch (error) {
-        console.error('Signin page - error checking user:', error)
         await supabase.auth.signOut()
       }
     }
@@ -52,13 +53,11 @@ export default function SignInPage() {
       
       if (error) {
         console.error('Error signing in:', error)
-        // TODO: Replace with proper toast notification
-        alert('Error signing in. Please try again.')
+        addToast('Error signing in. Please try again.', 'error')
       }
     } catch (err) {
       console.error('Sign in error:', err)
-      // TODO: Replace with proper toast notification  
-      alert('Error signing in. Please try again.')
+      addToast('Error signing in. Please try again.', 'error')
     } finally {
       setIsLoading(false)
     }
