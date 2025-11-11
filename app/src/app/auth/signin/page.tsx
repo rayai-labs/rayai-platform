@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Header } from "@/components/header"
-import { determineUserRoute } from '@/lib/utils'
+import { determineUserRoute, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { devSignIn, isDevAuthEnabled } from '@/lib/auth-helpers'
 import Link from 'next/link'
@@ -104,13 +104,12 @@ export default function SignInPage() {
           <button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className={`
-              w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg border text-base font-medium transition-all duration-200
-              ${isLoading 
-                ? 'bg-muted text-muted-foreground cursor-not-allowed border-border opacity-60' 
+            className={cn(
+              'w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg border text-base font-medium transition-all duration-200',
+              isLoading
+                ? 'bg-muted text-muted-foreground cursor-not-allowed border-border opacity-60'
                 : 'bg-background text-foreground hover:bg-muted border-border cursor-pointer hover:shadow-md'
-              }
-            `}
+            )}
           >
             {!isLoading && (
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -133,13 +132,12 @@ export default function SignInPage() {
               <button
                 onClick={handleDevSignIn}
                 disabled={isDevLoading}
-                className={`
-                  w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg border text-base font-medium transition-all duration-200
-                  ${isDevLoading 
-                    ? 'bg-muted text-muted-foreground cursor-not-allowed border-border opacity-60' 
+                className={cn(
+                  'w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg border text-base font-medium transition-all duration-200',
+                  isDevLoading
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed border-border opacity-60'
                     : 'bg-background text-foreground hover:bg-muted border-border cursor-pointer hover:shadow-md'
-                  }
-                `}
+                )}
               >
                 {!isDevLoading && (
                   <span className="text-lg">⚡</span>
