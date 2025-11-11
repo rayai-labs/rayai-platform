@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (!user || authError) {
+      if (authError?.code === 'user_not_found') {
+        return NextResponse.json(
+          { 
+            error: 'Session expired. Please sign in again.',
+            shouldSignOut: true
+          },
+          { status: 401 }
+        )
+      }
+      
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { keyName } = await request.json()
 
     if (!keyName || typeof keyName !== 'string' || keyName.trim().length === 0) {
@@ -18,7 +39,6 @@ export async function POST(request: NextRequest) {
 
     const apiKey = `ray_ai_sk_${randomHex}`
     
-    // Generate hash for storage (when database is implemented)
     const encoder = new TextEncoder()
     const keyData = encoder.encode(apiKey)
     const hashBuffer = await crypto.subtle.digest('SHA-256', keyData)
@@ -26,15 +46,35 @@ export async function POST(request: NextRequest) {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('')
     
-    const displayPrefix = apiKey.substring(0, 22)
+    const { data, error } = await supabase
+      .from('api_key')
+      .insert({
+        user_id: user.id,
+        name: keyName.trim(),
+        key_hash: keyHash
+      })
+      .select()
+
+    if (error) {
+      console.error('Database error:', error)
+      return NextResponse.json(
+        { error: 'Failed to save API key' },
+        { status: 500 }
+      )
+    }
+
+    if (!data || data.length === 0) {
+      return NextResponse.json(
+        { error: 'Failed to save API key' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
       apiKey,
       keyName: keyName.trim(),
-      keyHash,
-      displayPrefix,
-      createdAt: new Date().toISOString()
+      createdAt: data[0].created_at
     })
 
   } catch (error) {
