@@ -1,0 +1,28 @@
+# FastAPI and server
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+supabase>=2.0.0
+supabase-pydantic>=0.26.2
+
+# Configuration and validation
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Authentication
+python-jose[cryptography]>=3.3.0
+
+# Ray and code interpreter
+ray>=2.49.2
+git+https://github.com/ray-project/ray-agents.git
+docker>=7.0.0
+
+# Development tools
+pytest>=7.0.0
+httpx>=0.25.0
+black>=23.0.0
+ruff>=0.1.0

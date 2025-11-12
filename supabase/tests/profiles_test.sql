@@ -29,7 +29,7 @@ SELECT col_not_null('public', 'profile', 'email', 'email column should be NOT NU
 -- Test 5: Setup test data for trigger tests
 DO $$
 DECLARE
-    test_user_id uuid := '00000000-0000-0000-0000-000000000001';
+    test_user_id uuid := '11111111-1111-1111-1111-111111111111';
 BEGIN
     -- Insert a test user into auth.users
     INSERT INTO auth.users (
@@ -51,7 +51,7 @@ BEGIN
         '00000000-0000-0000-0000-000000000000',
         'authenticated',
         'authenticated',
-        'test@example.com',
+        'testuser1@testing.local',
         crypt('password123', gen_salt('bf')),
         NOW(),
         jsonb_build_object(
@@ -69,19 +69,19 @@ END $$;
 
 -- Test that profile was created by trigger
 SELECT ok(
-    EXISTS(SELECT 1 FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000001'),
+    EXISTS(SELECT 1 FROM public.profile WHERE id = '11111111-1111-1111-1111-111111111111'),
     'Profile should be created when auth.users entry is created'
 );
 
 -- Test that profile data matches
 SELECT is(
-    (SELECT email FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000001'),
-    'test@example.com',
+    (SELECT email FROM public.profile WHERE id = '11111111-1111-1111-1111-111111111111'),
+    'testuser1@testing.local',
     'Profile email should match auth user email'
 );
 
 SELECT is(
-    (SELECT full_name FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000001'),
+    (SELECT full_name FROM public.profile WHERE id = '11111111-1111-1111-1111-111111111111'),
     'Test User',
     'Profile full_name should be extracted from raw_user_meta_data'
 );
@@ -105,11 +105,11 @@ BEGIN
         confirmation_token,
         recovery_token
     ) VALUES (
-        '00000000-0000-0000-0000-000000000002',
+        '22222222-2222-2222-2222-222222222222',
         '00000000-0000-0000-0000-000000000000',
         'authenticated',
         'authenticated',
-        'test2@example.com',
+        'testuser2@testing.local',
         crypt('password123', gen_salt('bf')),
         NOW(),
         jsonb_build_object('full_name', 'Test User 2'),
@@ -142,17 +142,17 @@ BEGIN
     -- Manually set updated_at to a past time (bypassing the trigger by updating directly)
     UPDATE public.profile
     SET updated_at = old_timestamp
-    WHERE id = '00000000-0000-0000-0000-000000000002';
+    WHERE id = '22222222-2222-2222-2222-222222222222';
 
     -- Now update the profile normally - the trigger should fire and reset updated_at
     UPDATE public.profile
     SET full_name = 'Updated Test User 2'
-    WHERE id = '00000000-0000-0000-0000-000000000002';
+    WHERE id = '22222222-2222-2222-2222-222222222222';
 
     -- Get the new updated_at timestamp
     SELECT updated_at INTO new_updated_at
     FROM public.profile
-    WHERE id = '00000000-0000-0000-0000-000000000002';
+    WHERE id = '22222222-2222-2222-2222-222222222222';
 
     -- Verify that updated_at was updated by the trigger (should be much later than 2020)
     IF new_updated_at > old_timestamp + interval '1 year' THEN
@@ -163,7 +163,7 @@ BEGIN
 END $$;
 
 SELECT ok(
-    (SELECT updated_at >= created_at FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000002'),
+    (SELECT updated_at >= created_at FROM public.profile WHERE id = '22222222-2222-2222-2222-222222222222'),
     'updated_at should be >= created_at after profile update'
 );
 
@@ -186,11 +186,11 @@ BEGIN
         confirmation_token,
         recovery_token
     ) VALUES (
-        '00000000-0000-0000-0000-000000000003',
+        '33333333-3333-3333-3333-333333333333',
         '00000000-0000-0000-0000-000000000000',
         'authenticated',
         'authenticated',
-        'test3@example.com',
+        'testuser3@testing.local',
         crypt('password123', gen_salt('bf')),
         NOW(),
         jsonb_build_object(
@@ -210,18 +210,18 @@ BEGIN
         'full_name', 'Updated Name',
         'avatar_url', 'https://example.com/new.jpg'
     )
-    WHERE id = '00000000-0000-0000-0000-000000000003';
+    WHERE id = '33333333-3333-3333-3333-333333333333';
 END $$;
 
 -- Check that profile was synced
 SELECT is(
-    (SELECT full_name FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000003'),
+    (SELECT full_name FROM public.profile WHERE id = '33333333-3333-3333-3333-333333333333'),
     'Updated Name',
     'Profile full_name should sync when auth user metadata changes'
 );
 
 SELECT is(
-    (SELECT avatar_url FROM public.profile WHERE id = '00000000-0000-0000-0000-000000000003'),
+    (SELECT avatar_url FROM public.profile WHERE id = '33333333-3333-3333-3333-333333333333'),
     'https://example.com/new.jpg',
     'Profile avatar_url should sync when auth user metadata changes'
 );
