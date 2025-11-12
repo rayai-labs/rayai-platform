@@ -5,19 +5,37 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Header } from "@/components/header"
 import { determineUserRoute } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
 import Link from 'next/link'
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const { addToast } = useToast()
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        const route = await determineUserRoute()
-        router.push(route)
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          await supabase.auth.signOut()
+          return
+        }
+        
+        if (session) {
+          const { error: userError } = await supabase.auth.getUser()
+          if (userError?.code === 'user_not_found') {
+            await supabase.auth.signOut()
+            return
+          }
+          
+          const route = await determineUserRoute()
+          router.push(route)
+        }
+      } catch (error) {
+        await supabase.auth.signOut()
       }
     }
     checkUser()
@@ -35,13 +53,11 @@ export default function SignInPage() {
       
       if (error) {
         console.error('Error signing in:', error)
-        // TODO: Replace with proper toast notification
-        alert('Error signing in. Please try again.')
+        addToast('Error signing in. Please try again.', 'error')
       }
     } catch (err) {
       console.error('Sign in error:', err)
-      // TODO: Replace with proper toast notification  
-      alert('Error signing in. Please try again.')
+      addToast('Error signing in. Please try again.', 'error')
     } finally {
       setIsLoading(false)
     }

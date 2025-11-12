@@ -6,6 +6,5 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export async function determineUserRoute(): Promise<string> {
-  console.log('User authenticated, routing to keys page')
   return '/keys'
 }
