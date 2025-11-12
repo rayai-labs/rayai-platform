@@ -6,9 +6,8 @@ from uuid import UUID
 
 import ray
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-
-from app.database.models import Sandbox, SandboxStatus
+from app.database import database, Sandbox, SandboxStatus
+from app.database.helpers import get_sandbox_session_id
 from app.schemas.sandbox import (
     ExecutionResult,
     InstallResult,
@@ -39,13 +38,12 @@ class SandboxService:
     """
 
     @staticmethod
-    def _get_sandbox(sandbox_id: UUID, user_id: UUID, db: Session) -> Sandbox:
+    async def _get_sandbox(sandbox_id: UUID, user_id: UUID) -> Sandbox:
         """Get sandbox and verify ownership.
 
         Args:
             sandbox_id: Sandbox UUID
             user_id: User UUID
-            db: Database session
 
         Returns:
             Sandbox object
@@ -54,7 +52,7 @@ class SandboxService:
             HTTPException 404: If sandbox not found
             HTTPException 403: If user doesn't own the sandbox
         """
-        sandbox = db.query(Sandbox).filter(Sandbox.id == sandbox_id).first()
+        sandbox = database.Sandbox.get_sync(id=sandbox_id)
 
         if not sandbox:
             raise HTTPException(
@@ -71,46 +69,40 @@ class SandboxService:
         return sandbox
 
     @staticmethod
-    def create_sandbox(user_id: UUID, db: Session) -> Sandbox:
+    async def create_sandbox(user_id: UUID) -> Sandbox:
         """Create a new sandbox (database record only).
 
         Args:
             user_id: User UUID
-            db: Database session
 
         Returns:
             Created sandbox object
         """
-        sandbox = Sandbox(
+        sandbox = database.Sandbox.create_sync(
             user_id=user_id,
             status=SandboxStatus.STOPPED,
         )
-        db.add(sandbox)
-        db.commit()
-        db.refresh(sandbox)
         return sandbox
 
     @staticmethod
-    def list_sandboxes(user_id: UUID, db: Session) -> list[Sandbox]:
+    async def list_sandboxes(user_id: UUID) -> list[Sandbox]:
         """List all sandboxes for a user.
 
         Args:
             user_id: User UUID
-            db: Database session
 
         Returns:
             List of sandbox objects
         """
-        return db.query(Sandbox).filter(Sandbox.user_id == user_id).all()
+        return database.Sandbox.get_by_user_sync(user_id=user_id)
 
     @staticmethod
-    def get_sandbox(sandbox_id: UUID, user_id: UUID, db: Session) -> Sandbox:
+    async def get_sandbox(sandbox_id: UUID, user_id: UUID) -> Sandbox:
         """Get a sandbox by ID.
 
         Args:
             sandbox_id: Sandbox UUID
             user_id: User UUID
-            db: Database session
 
         Returns:
             Sandbox object
@@ -118,10 +110,10 @@ class SandboxService:
         Raises:
             HTTPException: If not found or not authorized
         """
-        return SandboxService._get_sandbox(sandbox_id, user_id, db)
+        return await SandboxService._get_sandbox(sandbox_id, user_id)
 
     @staticmethod
-    def start_sandbox(sandbox_id: UUID, user_id: UUID, db: Session) -> Sandbox:
+    async def start_sandbox(sandbox_id: UUID, user_id: UUID) -> Sandbox:
         """Start a sandbox and create the Ray CodeInterpreterExecutor actor.
 
         This explicitly creates the ray-agents session actor so that install_package
@@ -130,7 +122,6 @@ class SandboxService:
         Args:
             sandbox_id: Sandbox UUID
             user_id: User UUID
-            db: Database session
 
         Returns:
             Updated sandbox object
@@ -138,8 +129,8 @@ class SandboxService:
         Raises:
             HTTPException: If actor creation fails
         """
-        sandbox = SandboxService._get_sandbox(sandbox_id, user_id, db)
-        session_id = sandbox.get_session_id()
+        sandbox = await SandboxService._get_sandbox(sandbox_id, user_id)
+        session_id = get_sandbox_session_id(sandbox)
 
         # Create the CodeInterpreterExecutor actor explicitly
         # This uses the same naming convention as ray-agents:
@@ -168,19 +159,24 @@ class SandboxService:
                 detail=f"Failed to create sandbox session: {str(e)}",
             )
 
-        sandbox.status = SandboxStatus.ACTIVE
-        db.commit()
-        db.refresh(sandbox)
-        return sandbox
+        updated = database.Sandbox.update_status_sync(
+            id=sandbox_id,
+            status=SandboxStatus.ACTIVE,
+        )
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update sandbox status",
+            )
+        return updated
 
     @staticmethod
-    def stop_sandbox(sandbox_id: UUID, user_id: UUID, db: Session) -> Sandbox:
+    async def stop_sandbox(sandbox_id: UUID, user_id: UUID) -> Sandbox:
         """Stop a sandbox and cleanup Ray session.
 
         Args:
             sandbox_id: Sandbox UUID
             user_id: User UUID
-            db: Database session
 
         Returns:
             Updated sandbox object
@@ -188,10 +184,10 @@ class SandboxService:
         Raises:
             HTTPException: If cleanup fails
         """
-        sandbox = SandboxService._get_sandbox(sandbox_id, user_id, db)
+        sandbox = await SandboxService._get_sandbox(sandbox_id, user_id)
 
         # Call ray-agents to cleanup session (orchestration in ray-agents)
-        session_id = sandbox.get_session_id()
+        session_id = get_sandbox_session_id(sandbox)
         try:
             result = ray.get(cleanup_session.remote(session_id))
             # Result will have status='success' or 'error'
@@ -201,19 +197,24 @@ class SandboxService:
                 detail=f"Failed to cleanup sandbox: {str(e)}",
             )
 
-        sandbox.status = SandboxStatus.STOPPED
-        db.commit()
-        db.refresh(sandbox)
-        return sandbox
+        updated = database.Sandbox.update_status_sync(
+            id=sandbox_id,
+            status=SandboxStatus.STOPPED,
+        )
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update sandbox status",
+            )
+        return updated
 
     @staticmethod
-    def execute_code(
+    async def execute_code(
         sandbox_id: UUID,
         user_id: UUID,
         code: str,
         timeout: int,
         environment: Optional[dict[str, str]],
-        db: Session,
     ) -> ExecutionResult:
         """Execute code in a sandbox.
 
@@ -223,7 +224,6 @@ class SandboxService:
             code: Python code to execute
             timeout: Execution timeout in seconds
             environment: Optional environment variables
-            db: Database session
 
         Returns:
             ExecutionResult from ray-agents
@@ -231,10 +231,10 @@ class SandboxService:
         Raises:
             HTTPException: If execution fails
         """
-        sandbox = SandboxService._get_sandbox(sandbox_id, user_id, db)
+        sandbox = await SandboxService._get_sandbox(sandbox_id, user_id)
 
         # Build session ID
-        session_id = sandbox.get_session_id()
+        session_id = get_sandbox_session_id(sandbox)
 
         # Call ray-agents execute_code (ALL orchestration in ray-agents)
         try:
@@ -254,11 +254,10 @@ class SandboxService:
             )
 
     @staticmethod
-    def install_package(
+    async def install_package(
         sandbox_id: UUID,
         user_id: UUID,
         package: str,
-        db: Session,
     ) -> InstallResult:
         """Install a package in a sandbox.
 
@@ -266,7 +265,6 @@ class SandboxService:
             sandbox_id: Sandbox UUID
             user_id: User UUID
             package: Package name (e.g., 'numpy==1.24.0')
-            db: Database session
 
         Returns:
             InstallResult from ray-agents
@@ -274,8 +272,8 @@ class SandboxService:
         Raises:
             HTTPException: If installation fails
         """
-        sandbox = SandboxService._get_sandbox(sandbox_id, user_id, db)
-        session_id = sandbox.get_session_id()
+        sandbox = await SandboxService._get_sandbox(sandbox_id, user_id)
+        session_id = get_sandbox_session_id(sandbox)
 
         # Call ray-agents install_package (orchestration in ray-agents)
         try:
@@ -288,12 +286,11 @@ class SandboxService:
             )
 
     @staticmethod
-    def upload_file(
+    async def upload_file(
         sandbox_id: UUID,
         user_id: UUID,
         path: str,
         content: str,
-        db: Session,
     ) -> UploadResult:
         """Upload a file to a sandbox.
 
@@ -302,7 +299,6 @@ class SandboxService:
             user_id: User UUID
             path: Destination path in sandbox
             content: Base64-encoded file content
-            db: Database session
 
         Returns:
             UploadResult from ray-agents
@@ -310,8 +306,8 @@ class SandboxService:
         Raises:
             HTTPException: If upload fails
         """
-        sandbox = SandboxService._get_sandbox(sandbox_id, user_id, db)
-        session_id = sandbox.get_session_id()
+        sandbox = await SandboxService._get_sandbox(sandbox_id, user_id)
+        session_id = get_sandbox_session_id(sandbox)
 
         # Decode base64 content
         try:
@@ -335,13 +331,12 @@ class SandboxService:
             )
 
     @staticmethod
-    def get_stats(sandbox_id: UUID, user_id: UUID, db: Session) -> SessionStats:
+    async def get_stats(sandbox_id: UUID, user_id: UUID) -> SessionStats:
         """Get sandbox session statistics.
 
         Args:
             sandbox_id: Sandbox UUID
             user_id: User UUID
-            db: Database session
 
         Returns:
             SessionStats from ray-agents
@@ -349,8 +344,8 @@ class SandboxService:
         Raises:
             HTTPException: If stats retrieval fails
         """
-        sandbox = SandboxService._get_sandbox(sandbox_id, user_id, db)
-        session_id = sandbox.get_session_id()
+        sandbox = await SandboxService._get_sandbox(sandbox_id, user_id)
+        session_id = get_sandbox_session_id(sandbox)
 
         # Call ray-agents get_session_stats (orchestration in ray-agents)
         try:
@@ -363,22 +358,21 @@ class SandboxService:
             )
 
     @staticmethod
-    def delete_sandbox(sandbox_id: UUID, user_id: UUID, db: Session) -> None:
+    async def delete_sandbox(sandbox_id: UUID, user_id: UUID) -> None:
         """Delete a sandbox.
 
         Args:
             sandbox_id: Sandbox UUID
             user_id: User UUID
-            db: Database session
 
         Raises:
             HTTPException: If deletion fails
         """
-        sandbox = SandboxService._get_sandbox(sandbox_id, user_id, db)
+        sandbox = await SandboxService._get_sandbox(sandbox_id, user_id)
 
         # Cleanup Ray session if sandbox is active
         if sandbox.status == SandboxStatus.ACTIVE:
-            session_id = sandbox.get_session_id()
+            session_id = get_sandbox_session_id(sandbox)
             try:
                 ray.get(cleanup_session.remote(session_id))
             except Exception:
@@ -386,5 +380,4 @@ class SandboxService:
                 pass
 
         # Delete database record
-        db.delete(sandbox)
-        db.commit()
+        database.Sandbox.delete_sync(id=sandbox_id)

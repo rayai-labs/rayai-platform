@@ -62,3 +62,19 @@ Thumbs.db
 .temp/
 supabase/.branches/
 supabase/.temp/
+
+# sqlc generated files
+api/app/database/generated/*.py
+!api/app/database/generated/__init__.py
+
+# Supabase generated types
+app/src/lib/database.types.ts
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/

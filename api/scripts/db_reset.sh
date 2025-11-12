@@ -36,21 +36,16 @@ else
     echo "   To reset the database, run: cd .. && supabase db reset"
 fi
 
-# Step 2: Generate types from Supabase schema
+# Step 2: Generate types from migrations
 echo ""
-echo "🔧 Generating Pydantic types from Supabase schema..."
+echo "🔧 Generating types from migrations..."
 
-# Check if DATABASE_URL is set
-if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️  DATABASE_URL not set. Skipping type generation."
-    echo "   Set DATABASE_URL in .env to enable type generation."
+# Run the schema generation
+if make generate-schemas 2>/dev/null; then
+    echo "✓ Types generated successfully"
 else
-    # Run the type generation script
-    if uv run python scripts/generate_types.py; then
-        echo "✓ Types generated successfully"
-    else
-        echo "⚠️  Type generation failed. Continuing anyway..."
-    fi
+    echo "⚠️  Type generation failed. Continuing anyway..."
+    echo "   You can manually generate types with: make generate-schemas"
 fi
 
 echo ""
