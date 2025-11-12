@@ -1,12 +1,13 @@
 """FastAPI application entry point."""
 
 import ray
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routes import sandboxes
+from app.middleware.exception_handler import ExceptionHandler
 
 # Create FastAPI app
 app = FastAPI(
@@ -76,6 +77,13 @@ async def root():
         "docs": "/docs",
         "health": "/health",
     }
+
+
+# HTTP exception handler for consistent error responses
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with consistent formatting."""
+    return await ExceptionHandler.http_exception_handler(request, exc)
 
 
 # Global exception handler
